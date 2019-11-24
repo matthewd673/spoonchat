@@ -1,0 +1,212 @@
+<!doctype html>
+<html>
+	<head>
+		<title>spoonbase</title>
+		<link rel=stylesheet href="theme.css">
+	</head>
+	<body>
+		<h1 class="title">spoonbase</h1>
+		<p class="subtitle">chat about whatever</p>
+		<br>
+		<ul id="messages"></ul>
+		<form id="chatform" action="javascript:void(0);">
+			<input id="input" autocomplete="off" placeholder="message"/>
+			<input type="submit" value="send"/>
+		</form>
+		<p id="typing"></p>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+		<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+		<script>
+			$(function ()
+			{
+				var socket = io();
+
+				var form = document.getElementById("chatform");
+				var input = document.getElementById("input");
+				var messages = document.getElementById("messages");
+				var typingStatus = document.getElementById("typing");
+
+				form.onsubmit = function()
+				{
+					if(input.value.startsWith("/name "))
+						socket.emit("cmd", "name", input.value.split(" ")[1]);
+					else
+						socket.emit("chat", input.value);
+					
+					input.value = "";
+					socket.emit("status", "nothing");
+				};
+
+				socket.on('chat', function(msg, user, id)
+				{
+					//build message
+					var line = document.createElement("li");
+					line.setAttribute("id", id);
+
+					//the username
+					var userSpan = document.createElement("span");
+					userSpan.appendChild(text(user));
+					userSpan.classList.add("user");
+					
+					//the actual message
+					var msgSpan = document.createElement("span");
+					msgSpan.appendChild(text(msg));
+					msgSpan.classList.add("msgText");
+
+					//replies span
+					var repliesSpan = document.createElement("span");
+					repliesSpan.classList.add("replies");
+					repliesSpan.setAttribute("title", "0 replies to this message");
+
+					//the button to link to it
+					var linkButton;
+					if(id != "noid") //some messages can't be replied to
+					{
+						linkButton = document.createElement("a");
+						linkButton.appendChild(text("reply"));
+						linkButton.classList.add("linkTo");
+						linkButton.setAttribute("href", "#");
+						linkButton.onclick = function()
+						{
+							if(input.value == "") //no message typed
+								input.value += ">" + id + " ";
+							else
+							{
+								if(input.value.endsWith(" "))
+									input.value += ">" + id + " ";
+								else
+									input.value += " >" + id + " ";
+							}
+
+							input.focus();
+
+						};
+					}
+					else
+					{
+						linkButton = document.createElement("span");
+						linkButton.appendChild(text("(can't reply)"));
+						linkButton.classList.add("noLink");
+					}
+
+
+					line.appendChild(userSpan);
+					line.appendChild(text(": "));
+					line.appendChild(msgSpan);
+					line.appendChild(text(" "));
+					line.appendChild(repliesSpan);
+					line.appendChild(text(" "));
+					line.appendChild(linkButton);
+					line.classList.add("msgLine");
+					messages.appendChild(line);
+
+					parseMessage(msg, line);
+
+				});
+
+				//magic
+				function parseMessage(msg, line)
+				{
+					var split = msg.split(" ");
+					newMsg = msg;
+
+					for(var i = 0; i < split.length; i++)
+					{
+						//its a reference
+						if(split[i].startsWith(">"))
+						{
+							var msgId = split[i].replace(">", "");
+							var referenced = document.getElementById(msgId);
+							
+							var formatted = "";
+							if(referenced == null)
+							{
+								//no such message
+								var tooltip = "Either this message does not exist, or you were not here to see it.";
+								formatted = "<span class='reference_notfound' title='" + tooltip + "'>" + split[i] + "</span>";
+							}
+							else
+							{
+								//message exists
+								var tooltip = referenced.getElementsByClassName("user")[0].innerText + ": " + referenced.getElementsByClassName("msgText")[0].innerText;
+								var currentReplies = referenced.getElementsByClassName("replies")[0].innerText.replace("(", "").replace(")", "");
+								currentReplies++;
+
+								referenced.getElementsByClassName("replies")[0].innerText = "(" + currentReplies + ")";
+								if(currentReplies == 1)
+									referenced.getElementsByClassName("replies")[0].setAttribute("title", "1 reply to this message");
+								else
+									referenced.getElementsByClassName("replies")[0].setAttribute("title", currentReplies + " replies to this message");
+
+								formatted = "<span class='reference_exists' title='" + tooltip + "'>" + split[i] + "</span>";
+							}
+
+							newMsg = newMsg.replace(split[i], formatted);
+
+						}
+
+						//its a link
+						if(split[i].startsWith("http://") || split[i].startsWith("https://"))
+						{
+							var link = split[i];
+
+							var formatted = "";
+
+							formatted = "<a class='msg_link' target='_blank' title='External link' href='" + link + "'>" + link + "</a>";
+
+							newMsg = newMsg.replace(split[i], formatted);
+
+						}
+					}
+
+					line.getElementsByClassName("msgText")[0].innerHTML = newMsg;
+
+					//return newMsg;
+				}
+
+				input.oninput = function()
+				{
+					if(input.value == "")
+					{
+						socket.emit("status", "nothing");
+					}
+					else
+					{
+						socket.emit("status", "typing");
+					}
+				};
+
+				window.onblur = function()
+				{
+					socket.emit("status", "inactive");
+				};
+
+				window.onfocus = function()
+				{
+					if(input.value == "")
+					{
+						socket.emit("status", "nothing");
+					}
+					else
+					{
+						socket.emit("status", "typing");
+					}
+				};
+
+				socket.on('typestatus', function(ct)
+				{
+					if(ct == 0)
+						typingStatus.innerText = "";
+					else
+						typingStatus.innerText = ct + " people are typing";
+				})
+
+				//just to shorten some code
+				function text(info)
+				{
+					return document.createTextNode(info);
+				}
+			})
+		</script>
+	</body>
+</html>

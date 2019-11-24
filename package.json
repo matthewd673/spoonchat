@@ -1,0 +1,9 @@
+{
+	"name": "spoonchat",
+	"version": "0.0.1",
+	"description": "online, spoon-focused chat",
+	"dependencies": {
+		"express": "^4.15.2",
+		"socket.io": "^2.0.4"
+	}
+}

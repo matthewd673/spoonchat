@@ -1,0 +1,47 @@
+.title
+{
+	display: inline;
+}
+
+.subtitle
+{
+	display: inline;
+	font-style: italic;
+	color: gray;
+}
+
+.replies
+{
+	color: green;
+}
+
+.linkTo
+{
+	display: none;
+}
+
+.noLink
+{
+	color: gray;
+	font-style: italic;
+	display: none;
+}
+
+.msgLine:hover .linkTo, .msgLine:hover .noLink
+{
+	display: inline;
+}
+
+.reference_exists
+{
+	color: green;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.reference_notfound
+{
+	color: darkgreen;
+	border-bottom: 1px dashed darkgreen;
+	cursor: pointer;
+}
